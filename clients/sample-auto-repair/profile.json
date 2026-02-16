@@ -1,0 +1,11 @@
+﻿{
+  "client_id": "sample-auto-repair",
+  "display_name": "Sample Auto Repair Shop",
+  "template_path": "C:\\Users\\dj1je\\Documents\\composite reporting\\Composite Report Spreadsheet.xlsx",
+  "mapping_pl_path": "mapping_pl.csv",
+  "mapping_bs_path": "mapping_bs.csv",
+  "doctrine_path": "doctrine.csv",
+  "confidence_threshold": 0.85,
+  "tolerance": 1.0,
+  "learned_confidence_threshold": 0.96
+}

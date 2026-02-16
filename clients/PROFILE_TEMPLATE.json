@@ -1,0 +1,10 @@
+{
+  "client_id": "replace-with-client-id",
+  "display_name": "Replace With Client Name",
+  "template_path": "Composite Report Spreadsheet.xlsx",
+  "mapping_pl_path": "mapping_pl.csv",
+  "mapping_bs_path": "mapping_bs.csv",
+  "confidence_threshold": 0.87,
+  "tolerance": 1.0,
+  "learned_confidence_threshold": 0.96
+}

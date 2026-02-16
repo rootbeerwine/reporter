@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: composite-reporter
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn webapp:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
+      - key: TEMPLATE_PATH
+        value: /opt/render/project/src/clients/sample-auto-repair/Composite Report Spreadsheet.xlsx

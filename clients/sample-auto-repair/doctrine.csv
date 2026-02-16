@@ -1,0 +1,16 @@
+template_label,rule_type,statement,source_key,source_section,critical
+Accrued Income Tax Payable,zero_if_missing,bs,accrued income tax payable,current liabilities,true
+Total Current Assets,direct_from_qbo_total,bs,total current assets,,true
+Total Current & Other Assets,direct_from_qbo_total,bs,total assets,,true
+Total Current Liabilities,direct_from_qbo_total,bs,total current liabilities,,true
+Total Current & L/T Liabilities,direct_from_qbo_total,bs,total liabilities,,true
+Total Current & L/T Liab & Equity,direct_from_qbo_total,bs,total liabilities and equity,,true
+Total Cost of Sales,direct_from_qbo_total,pl,total cost of goods sold,,true
+Profit From Operations,direct_from_account,pl,net operating income,expenses,true
+Net Profit Before Income Taxes,direct_from_account,pl,net income,other expenses,true
+Sublet,section_sum,pl,,revenue,false
+Sublet,section_sum,pl,,cost of goods sold,false
+Tires,section_sum,pl,,revenue,false
+Tires,section_sum,pl,,cost of goods sold,false
+Environmental Fees / Shop Supplies,section_sum,pl,,revenue,false
+Environmental Fees / Shop Supplies,section_sum,pl,,cost of goods sold,false
