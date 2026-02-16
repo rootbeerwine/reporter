@@ -1,0 +1,12 @@
+{
+  "client_id": "gs",
+  "display_name": "GS",
+  "template_path": "../sample-auto-repair/Composite Report Spreadsheet.xlsx",
+  "mapping_pl_path": "mapping_pl.csv",
+  "mapping_bs_path": "mapping_bs.csv",
+  "doctrine_path": "doctrine.csv",
+  "calibration_path": "calibration.json",
+  "confidence_threshold": 0.85,
+  "tolerance": 1.0,
+  "learned_confidence_threshold": 0.96
+}

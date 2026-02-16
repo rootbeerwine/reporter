@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+import os
 import re
 import shutil
 from dataclasses import dataclass
@@ -252,6 +253,16 @@ def _load_reference_mappings(paths: list[Path]) -> dict[str, str]:
     return merged
 
 
+def _portable_profile_path(base_dir: Path, target_path: Path) -> str:
+    try:
+        relative = Path(os.path.relpath(target_path.resolve(), start=base_dir.resolve()))
+        if not relative.is_absolute():
+            return relative.as_posix()
+    except Exception:
+        pass
+    return str(target_path)
+
+
 def onboard_client_from_coa(
     *,
     clients_root: Path,
@@ -285,11 +296,11 @@ def onboard_client_from_coa(
     profile_payload = {
         "client_id": client_id,
         "display_name": display_name.strip() or client_id,
-        "template_path": str(template_path),
-        "mapping_pl_path": str(mapping_pl_path),
-        "mapping_bs_path": str(mapping_bs_path),
-        "doctrine_path": str(client_dir / "doctrine.csv"),
-        "calibration_path": str(client_dir / "calibration.json"),
+        "template_path": _portable_profile_path(client_dir, template_path),
+        "mapping_pl_path": "mapping_pl.csv",
+        "mapping_bs_path": "mapping_bs.csv",
+        "doctrine_path": "doctrine.csv",
+        "calibration_path": "calibration.json",
         "confidence_threshold": 0.85,
         "tolerance": 1.0,
         "learned_confidence_threshold": 0.96,
