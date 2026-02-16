@@ -1,7 +1,7 @@
 ﻿{
   "client_id": "sample-auto-repair",
   "display_name": "Sample Auto Repair Shop",
-  "template_path": "C:\\Users\\dj1je\\Documents\\composite reporting\\Composite Report Spreadsheet.xlsx",
+  "template_path": "Composite Report Spreadsheet.xlsx",
   "mapping_pl_path": "mapping_pl.csv",
   "mapping_bs_path": "mapping_bs.csv",
   "doctrine_path": "doctrine.csv",
