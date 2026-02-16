@@ -461,11 +461,38 @@ def _classify_from_template_sections(section_labels: list[str]) -> str:
     return "other"
 
 
-def _load_template_label_options(profile) -> dict[str, list[str]]:
+def _format_template_line_marker(value: object) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, float):
+        if value.is_integer():
+            return str(int(value))
+        return str(value)
+    text = str(value).strip()
+    return text
+
+
+def _label_with_line_marker(label: str, marker: str) -> str:
+    marker_text = (marker or "").strip()
+    if not marker_text:
+        return label
+    return f"{marker_text} | {label}"
+
+
+def _load_template_label_options(profile) -> tuple[dict[str, list[str]], dict[str, str]]:
     try:
         template_index = load_template_index(profile.template_path)
     except Exception:  # noqa: BLE001
-        return {"pl": [], "bs": [], "unclassified": []}
+        return {"pl": [], "bs": [], "unclassified": []}, {}
+
+    template_book = None
+    template_sheet = None
+    try:
+        template_book = load_workbook(profile.template_path, data_only=True, read_only=True)
+        if "New Composite Worksheet" in template_book.sheetnames:
+            template_sheet = template_book["New Composite Worksheet"]
+    except Exception:  # noqa: BLE001
+        template_sheet = None
 
     try:
         pl_map = load_mapping_csv(profile.mapping_pl_path)
@@ -480,6 +507,7 @@ def _load_template_label_options(profile) -> dict[str, list[str]]:
     bs_labels = {_norm_label(v) for v in bs_map.values() if str(v or "").strip()}
 
     grouped: dict[str, list[str]] = {"pl": [], "bs": [], "unclassified": []}
+    display_by_norm: dict[str, str] = {}
     seen: set[str] = set()
     for norm_key, slots in template_index.slots_by_label.items():
         if not slots:
@@ -491,6 +519,14 @@ def _load_template_label_options(profile) -> dict[str, list[str]]:
         if key in seen:
             continue
         seen.add(key)
+
+        sorted_slots = sorted(slots, key=lambda s: (s.row, s.label_col))
+        first_slot = sorted_slots[0]
+        marker = ""
+        if template_sheet is not None:
+            left_col = first_slot.label_col - 1 if first_slot.label_col > 1 else first_slot.label_col
+            marker = _format_template_line_marker(template_sheet.cell(row=first_slot.row, column=left_col).value)
+        display_by_norm[key] = _label_with_line_marker(label, marker)
 
         section_guess = _classify_from_template_sections([s.section_label for s in slots if s.section_label])
         accounting_guess = _classify_template_label_accounting(label)
@@ -510,7 +546,12 @@ def _load_template_label_options(profile) -> dict[str, list[str]]:
 
     for bucket in grouped.values():
         bucket.sort(key=lambda s: s.lower())
-    return grouped
+    if template_book is not None:
+        try:
+            template_book.close()
+        except Exception:  # noqa: BLE001
+            pass
+    return grouped, display_by_norm
 
 
 def _mapping_assistant_html(
@@ -519,8 +560,10 @@ def _mapping_assistant_html(
     pl_rows: list[dict[str, str]],
     bs_rows: list[dict[str, str]],
     template_label_groups: dict[str, list[str]] | None = None,
+    template_label_display: dict[str, str] | None = None,
 ) -> str:
     template_label_groups = template_label_groups or {"pl": [], "bs": [], "unclassified": []}
+    template_label_display = template_label_display or {}
 
     def _rows_html(statement_type: str, rows: list[dict[str, str]]) -> str:
         if not rows:
@@ -528,7 +571,8 @@ def _mapping_assistant_html(
         rendered = []
         for idx, row in enumerate(rows):
             suggestion = row["top_suggestion"]
-            suggest_html = html.escape(suggestion) if suggestion else "<span class=\"hint\">No suggestion</span>"
+            suggestion_display = template_label_display.get(_norm_label(suggestion), suggestion) if suggestion else ""
+            suggest_html = html.escape(suggestion_display) if suggestion else "<span class=\"hint\">No suggestion</span>"
             # Keep dropdown group order consistent across P&L and BS sections.
             groups_order = ["pl", "bs"]
             grouped_values = {g: list(template_label_groups.get(g, [])) for g in ("pl", "bs")}
@@ -550,7 +594,7 @@ def _mapping_assistant_html(
                 values = sorted(values, key=lambda s: s.lower())
                 total_options += len(values)
                 option_tags = "".join(
-                    f"<option value=\"{html.escape(opt)}\"{' selected' if suggestion and _norm_label(opt) == suggestion_norm else ''}>{html.escape(opt)}</option>"
+                    f"<option value=\"{html.escape(opt)}\"{' selected' if suggestion and _norm_label(opt) == suggestion_norm else ''}>{html.escape(template_label_display.get(_norm_label(opt), opt))}</option>"
                     for opt in values
                 )
                 group_blocks.append(f"<optgroup label=\"{_group_label(group_key)}\">{option_tags}</optgroup>")
@@ -593,7 +637,7 @@ def _mapping_assistant_html(
         return f"""
 <div style=\"overflow:auto;\">
 <table class=\"assist-table\">
-  <thead><tr><th>QBO Account</th><th>Amount</th><th>Suggested Label</th><th>Action</th></tr></thead>
+  <thead><tr><th>QBO Account</th><th>Amount</th><th>Suggested Label (Line | Label)</th><th>Action</th></tr></thead>
   <tbody>{''.join(rendered)}</tbody>
 </table>
 </div>
@@ -602,7 +646,7 @@ def _mapping_assistant_html(
     return f"""
 <div class=\"card\">
   <h2>Unmapped Accounts Assistant</h2>
-  <p class=\"hint\" style=\"margin-bottom:12px;\">Review suggestions and apply one-click mappings to reduce future manual cleanup.</p>
+  <p class=\"hint\" style=\"margin-bottom:12px;\">Review suggestions and apply one-click mappings to reduce future manual cleanup. Labels show as line number then label.</p>
   <h3>Profit &amp; Loss</h3>
   {_rows_html("pl", pl_rows)}
   <h3 style=\"margin-top:14px;\">Balance Sheet</h3>
@@ -1295,7 +1339,7 @@ def run_from_web(
         threshold = float(tieout.get("parameters", {}).get("confidence_threshold", profile.confidence_threshold))
         pl_unmapped_preview = _read_unmapped_preview(out_dir / "UNMAPPED_PL_ACCOUNTS.xlsx", threshold=threshold)
         bs_unmapped_preview = _read_unmapped_preview(out_dir / "UNMAPPED_BS_ACCOUNTS.xlsx", threshold=threshold)
-        template_label_options = _load_template_label_options(profile)
+        template_label_options, template_label_display = _load_template_label_options(profile)
         result_html = f"""
 <div class=\"hero\">
   <h1>Run Completed</h1>
@@ -1319,7 +1363,7 @@ def run_from_web(
   <p><a href=\"/run/{run_id}?client_id={html.escape(profile.client_id)}\">Open this run summary page again</a></p>
   <p style=\"margin-top:14px;\"><a href=\"/\">Start another run</a></p>
 </div>
-{_mapping_assistant_html(run_id, profile.client_id, pl_unmapped_preview, bs_unmapped_preview, template_label_options)}
+{_mapping_assistant_html(run_id, profile.client_id, pl_unmapped_preview, bs_unmapped_preview, template_label_options, template_label_display)}
 {_feedback_form_html(profile.client_id, f"Run ID: {run_id}\\nObserved issue: ")}
 """
     except Exception as exc:
@@ -1358,7 +1402,11 @@ def view_run(run_id: str, client_id: str = "") -> str:
     threshold = float(tieout.get("parameters", {}).get("confidence_threshold", profile.confidence_threshold if profile else 0.85))
     pl_unmapped_preview = _read_unmapped_preview(out_dir / "UNMAPPED_PL_ACCOUNTS.xlsx", threshold=threshold)
     bs_unmapped_preview = _read_unmapped_preview(out_dir / "UNMAPPED_BS_ACCOUNTS.xlsx", threshold=threshold)
-    template_label_options = _load_template_label_options(profile) if profile else []
+    template_label_options, template_label_display = (
+        _load_template_label_options(profile)
+        if profile
+        else ({"pl": [], "bs": [], "unclassified": []}, {})
+    )
     status = tieout.get("status", "UNKNOWN")
     status_class = "ok" if status == "PASSED" else "bad"
     return _render_page(
@@ -1377,7 +1425,7 @@ def view_run(run_id: str, client_id: str = "") -> str:
   <p><a href=\"/files/{run_id}/out/run_report.html\">run_report.html</a></p>
   <p><a href=\"/files/{run_id}/out/run.log\">run.log</a></p>
 </div>
-{_mapping_assistant_html(run_id, selected_client_id, pl_unmapped_preview, bs_unmapped_preview, template_label_options)}
+{_mapping_assistant_html(run_id, selected_client_id, pl_unmapped_preview, bs_unmapped_preview, template_label_options, template_label_display)}
 <div class=\"card\"><p><a href=\"/\">Back to workspace</a></p></div>
 """
     )
