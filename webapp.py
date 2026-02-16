@@ -882,6 +882,22 @@ def _render_page(content: str) -> str:
     }}
     .kpi-label {{ font-size: 12px; color: #667085; margin-bottom: 2px; }}
     .kpi-value {{ font-size: 18px; font-weight: 700; color: #0f2744; }}
+    .primary-download {{
+      display: inline-block;
+      margin-top: 8px;
+      padding: 14px 18px;
+      border-radius: 10px;
+      border: 1px solid #1d4f91;
+      background: #1d4f91;
+      color: #ffffff;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 18px;
+    }}
+    .primary-download:hover {{
+      background: #173f73;
+      border-color: #173f73;
+    }}
     .search-wrap {{ display: grid; gap: 8px; }}
     .search-input {{
       border: 1px solid var(--line);
@@ -1393,13 +1409,8 @@ def run_from_web(
     <div class=\"kpi\"><div class=\"kpi-label\">Unmapped BS</div><div class=\"kpi-value\">{tieout.get('unmapped_counts', {}).get('bs')}</div></div>
     <div class=\"kpi\"><div class=\"kpi-label\">Learned Mappings Added</div><div class=\"kpi-value\">PL {learned.get('pl', 0)} | BS {learned.get('bs', 0)}</div></div>
   </div>
-  <p><strong>Delivery Files</strong></p>
-  <p><a href=\"/files/{run_id}/out/coach_filled.xlsx\">coach_filled.xlsx</a></p>
-  <p><a href=\"/files/{run_id}/out/UNMAPPED_PL_ACCOUNTS.xlsx\">UNMAPPED_PL_ACCOUNTS.xlsx</a></p>
-  <p><a href=\"/files/{run_id}/out/UNMAPPED_BS_ACCOUNTS.xlsx\">UNMAPPED_BS_ACCOUNTS.xlsx</a></p>
-  <p><a href=\"/files/{run_id}/out/TIEOUT.json\">TIEOUT.json</a></p>
-  <p><a href=\"/files/{run_id}/out/run_report.html\">run_report.html (client-ready summary)</a></p>
-  <p><a href=\"/files/{run_id}/out/run.log\">run.log</a></p>
+  <p><strong>Completed Output</strong></p>
+  <p><a class=\"primary-download\" href=\"/files/{run_id}/out/coach_filled.xlsx\">Completed Composite</a></p>
   <p><a href=\"/run/{run_id}?client_id={html.escape(profile.client_id)}\">Open this run summary page again</a></p>
   <p style=\"margin-top:14px;\"><a href=\"/\">Start another run</a></p>
 </div>
@@ -1457,13 +1468,8 @@ def view_run(run_id: str, client_id: str = "") -> str:
 </div>
 {_business_summary_html(tieout)}
 <div class=\"card result\">
-  <p><strong>Delivery Files</strong></p>
-  <p><a href=\"/files/{run_id}/out/coach_filled.xlsx\">coach_filled.xlsx</a></p>
-  <p><a href=\"/files/{run_id}/out/UNMAPPED_PL_ACCOUNTS.xlsx\">UNMAPPED_PL_ACCOUNTS.xlsx</a></p>
-  <p><a href=\"/files/{run_id}/out/UNMAPPED_BS_ACCOUNTS.xlsx\">UNMAPPED_BS_ACCOUNTS.xlsx</a></p>
-  <p><a href=\"/files/{run_id}/out/TIEOUT.json\">TIEOUT.json</a></p>
-  <p><a href=\"/files/{run_id}/out/run_report.html\">run_report.html</a></p>
-  <p><a href=\"/files/{run_id}/out/run.log\">run.log</a></p>
+  <p><strong>Completed Output</strong></p>
+  <p><a class=\"primary-download\" href=\"/files/{run_id}/out/coach_filled.xlsx\">Completed Composite</a></p>
 </div>
 {_mapping_assistant_html(run_id, selected_client_id, pl_unmapped_preview, bs_unmapped_preview, template_label_options, template_label_display)}
 <div class=\"card\"><p><a href=\"/\">Back to workspace</a></p></div>
