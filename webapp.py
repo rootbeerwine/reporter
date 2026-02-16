@@ -85,6 +85,31 @@ def _ensure_bootstrap_client_profile() -> None:
         profile_path.write_text(json.dumps(profile, indent=2), encoding="utf-8")
 
 
+def _ensure_client_mapping_files(profile) -> list[str]:
+    notes: list[str] = []
+    seed_by_statement = {
+        "P&L": CLIENTS_DIR / "sample-auto-repair" / "mapping_pl.csv",
+        "Balance Sheet": CLIENTS_DIR / "sample-auto-repair" / "mapping_bs.csv",
+    }
+    target_by_statement = {
+        "P&L": profile.mapping_pl_path,
+        "Balance Sheet": profile.mapping_bs_path,
+    }
+
+    for statement_name, target_path in target_by_statement.items():
+        if target_path.exists():
+            continue
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        seed_path = seed_by_statement[statement_name]
+        if seed_path.exists():
+            shutil.copy2(seed_path, target_path)
+            notes.append(f"{statement_name} mapping file was missing and restored from sample defaults.")
+        else:
+            target_path.write_text("qbo_account_name,template_label\n", encoding="utf-8")
+            notes.append(f"{statement_name} mapping file was missing and recreated with an empty header.")
+    return notes
+
+
 def _ordered_profiles() -> list:
     _ensure_bootstrap_client_profile()
     profiles = list_client_profiles(CLIENTS_DIR)
@@ -1279,6 +1304,11 @@ def run_from_web(
     except Exception as exc:
         return _render_page(_render_error_card(exc))
 
+    try:
+        mapping_bootstrap_notes = _ensure_client_mapping_files(profile)
+    except Exception as exc:
+        return _render_page(_render_error_card(exc))
+
     run_id = datetime.utcnow().strftime("%Y%m%d_%H%M%S") + "_" + uuid.uuid4().hex[:8]
     run_dir = WEB_RUNS_DIR / run_id
     in_dir = run_dir / "inputs"
@@ -1340,11 +1370,21 @@ def run_from_web(
         pl_unmapped_preview = _read_unmapped_preview(out_dir / "UNMAPPED_PL_ACCOUNTS.xlsx", threshold=threshold)
         bs_unmapped_preview = _read_unmapped_preview(out_dir / "UNMAPPED_BS_ACCOUNTS.xlsx", threshold=threshold)
         template_label_options, template_label_display = _load_template_label_options(profile)
+        mapping_bootstrap_html = ""
+        if mapping_bootstrap_notes:
+            items = "".join(f"<li>{html.escape(note)}</li>" for note in mapping_bootstrap_notes)
+            mapping_bootstrap_html = f"""
+<div class=\"card\">
+  <p class=\"hint\" style=\"margin:0;\"><strong>Client Mapping Auto-Restore:</strong></p>
+  <ul style=\"margin:8px 0 0 18px;\">{items}</ul>
+</div>
+"""
         result_html = f"""
 <div class=\"hero\">
   <h1>Run Completed</h1>
   <p class=\"{status_class}\">Client: {html.escape(profile.display_name)} | Reconciliation Check: {html.escape(status)}</p>
 </div>
+{mapping_bootstrap_html}
 {_business_summary_html(tieout)}
 <div class=\"card result\">
   <div class=\"grid\" style=\"margin-bottom:12px;\">
