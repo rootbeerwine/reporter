@@ -79,9 +79,13 @@ def list_client_profiles(clients_root: Path) -> list[ClientProfile]:
         return profiles
 
     for profile_path in sorted(clients_root.glob("*/profile.json")):
-        profile = load_client_profile(profile_path)
-        if profile.template_path.exists() and profile.mapping_pl_path.exists() and profile.mapping_bs_path.exists():
-            profiles.append(profile)
+        try:
+            profile = load_client_profile(profile_path)
+        except Exception:
+            continue
+        # Keep profiles visible even when referenced files are missing.
+        # Missing template/mapping files are surfaced by preflight at run time.
+        profiles.append(profile)
     return profiles
 
 
