@@ -889,7 +889,7 @@ def _render_page(content: str) -> str:
       border-radius: 10px;
       border: 1px solid #1d4f91;
       background: #1d4f91;
-      color: #ffffff;
+      color: #ffffff !important;
       text-decoration: none;
       font-weight: 700;
       font-size: 18px;
@@ -897,6 +897,11 @@ def _render_page(content: str) -> str:
     .primary-download:hover {{
       background: #173f73;
       border-color: #173f73;
+      color: #ffffff !important;
+      text-decoration: none;
+    }}
+    .primary-download:visited {{
+      color: #ffffff !important;
     }}
     .search-wrap {{ display: grid; gap: 8px; }}
     .search-input {{
@@ -1321,7 +1326,7 @@ def run_from_web(
         return _render_page(_render_error_card(exc))
 
     try:
-        mapping_bootstrap_notes = _ensure_client_mapping_files(profile)
+        _ensure_client_mapping_files(profile)
     except Exception as exc:
         return _render_page(_render_error_card(exc))
 
@@ -1379,39 +1384,19 @@ def run_from_web(
             )
         )
         status_class = "ok" if tieout.get("status") == "PASSED" else "bad"
-        status = tieout.get("status", "UNKNOWN")
-        learned = tieout.get("learned_mappings_added", {})
         _write_run_report_html(run_id, profile, tieout, out_dir)
         threshold = float(tieout.get("parameters", {}).get("confidence_threshold", profile.confidence_threshold))
         pl_unmapped_preview = _read_unmapped_preview(out_dir / "UNMAPPED_PL_ACCOUNTS.xlsx", threshold=threshold)
         bs_unmapped_preview = _read_unmapped_preview(out_dir / "UNMAPPED_BS_ACCOUNTS.xlsx", threshold=threshold)
         template_label_options, template_label_display = _load_template_label_options(profile)
-        mapping_bootstrap_html = ""
-        if mapping_bootstrap_notes:
-            items = "".join(f"<li>{html.escape(note)}</li>" for note in mapping_bootstrap_notes)
-            mapping_bootstrap_html = f"""
-<div class=\"card\">
-  <p class=\"hint\" style=\"margin:0;\"><strong>Client Mapping Auto-Restore:</strong></p>
-  <ul style=\"margin:8px 0 0 18px;\">{items}</ul>
-</div>
-"""
         result_html = f"""
 <div class=\"hero\">
-  <h1>Run Completed</h1>
-  <p class=\"{status_class}\">Client: {html.escape(profile.display_name)} | Reconciliation Check: {html.escape(status)}</p>
+  <h1>Report Ready</h1>
+  <p class=\"{status_class}\">Client: {html.escape(profile.display_name)}</p>
 </div>
-{mapping_bootstrap_html}
-{_business_summary_html(tieout)}
 <div class=\"card result\">
-  <div class=\"grid\" style=\"margin-bottom:12px;\">
-    <div class=\"kpi\"><div class=\"kpi-label\">Mapped Labels Filled</div><div class=\"kpi-value\">{tieout.get('filled_labels_count')}</div></div>
-    <div class=\"kpi\"><div class=\"kpi-label\">Unmapped PL</div><div class=\"kpi-value\">{tieout.get('unmapped_counts', {}).get('pl')}</div></div>
-    <div class=\"kpi\"><div class=\"kpi-label\">Unmapped BS</div><div class=\"kpi-value\">{tieout.get('unmapped_counts', {}).get('bs')}</div></div>
-    <div class=\"kpi\"><div class=\"kpi-label\">Learned Mappings Added</div><div class=\"kpi-value\">PL {learned.get('pl', 0)} | BS {learned.get('bs', 0)}</div></div>
-  </div>
-  <p><strong>Completed Output</strong></p>
+  <p><strong>Download Your Report</strong></p>
   <p><a class=\"primary-download\" href=\"/files/{run_id}/out/coach_filled.xlsx\">Completed Composite</a></p>
-  <p><a href=\"/run/{run_id}?client_id={html.escape(profile.client_id)}\">Open this run summary page again</a></p>
   <p style=\"margin-top:14px;\"><a href=\"/\">Start another run</a></p>
 </div>
 {_mapping_assistant_html(run_id, profile.client_id, pl_unmapped_preview, bs_unmapped_preview, template_label_options, template_label_display)}
@@ -1458,17 +1443,14 @@ def view_run(run_id: str, client_id: str = "") -> str:
         if profile
         else ({"pl": [], "bs": [], "unclassified": []}, {})
     )
-    status = tieout.get("status", "UNKNOWN")
-    status_class = "ok" if status == "PASSED" else "bad"
     return _render_page(
         f"""
 <div class=\"hero\">
-  <h1>Run Summary</h1>
-  <p class=\"{status_class}\">Run ID: {html.escape(run_id)} | Reconciliation Check: {html.escape(status)}</p>
+  <h1>Report Ready</h1>
+  <p>Run ID: {html.escape(run_id)}</p>
 </div>
-{_business_summary_html(tieout)}
 <div class=\"card result\">
-  <p><strong>Completed Output</strong></p>
+  <p><strong>Download Your Report</strong></p>
   <p><a class=\"primary-download\" href=\"/files/{run_id}/out/coach_filled.xlsx\">Completed Composite</a></p>
 </div>
 {_mapping_assistant_html(run_id, selected_client_id, pl_unmapped_preview, bs_unmapped_preview, template_label_options, template_label_display)}
